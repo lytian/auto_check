@@ -1,0 +1,174 @@
+
+html, body  {
+  // 默认背景
+  background: @color-background;
+  // 默认字体颜色
+  color: @color-text-1;
+  // 默认字体大小
+  font-size: @font-size-normal;
+  font-family: "Helvetica Neue",Helvetica,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","微软雅黑",Arial,sans-serif;
+  margin: 0;
+  height: 100%;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
+// 去除input[type="number"]的上下箭头按钮
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+a {
+  text-decoration: none;
+  background-color: transparent;
+  cursor: pointer;
+}
+
+p {
+  word-break: break-all;
+  margin: 0;
+}
+
+ol,
+ul,
+li {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+[v-cloak] {
+  display: none;
+}
+
+.run-box {
+  padding: 12px;
+  border: 1px solid @color-border-1;
+  border-radius: 5px;
+  background: #fff;
+  .title {
+    font-size: 16px;
+    font-weight: bold;
+    color: @color-warning;
+    margin-bottom: 10px;
+  }
+}
+.log-box {
+  height: calc(100% - 90px);
+  background: #545c64;
+  border-radius: 5px;
+  padding: 32px 12px 12px;
+  position: relative;
+  font-size: 14px;
+  color: #FFFFFF;
+  box-sizing: border-box;
+  .log-title {
+    position: absolute;
+    top: 8px;
+    left: 12px;
+    color: #A0A0A0;
+    font-size: 12px;
+  }
+  .el-scrollbar {
+    height: 200px;
+  }
+  .log-list {
+    li {
+      line-height: 1.4;
+      color: #F0F0F0;
+      font-size: 12px;
+      margin-bottom: 4px;
+      label {
+        color: #D0D0D0;
+        margin-right: 12px;
+      }
+    }
+  }
+}
+.progress-bar {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+  .el-progress {
+    width: 100%;
+  }
+  .run-btn {
+    width: 36px;
+    height: 36px;
+    margin-left: 12px;
+    flex-shrink: 0;
+    cursor: pointer;
+    background-size: 100%;
+  }
+  .start-btn {
+    background-image: url(~@/assets/icon-start.png);
+    &:hover {
+      background-image: url(~@/assets/icon-start-b.png);
+    }
+  }
+  .stop-btn {
+    background-image: url(~@/assets/icon-stop.png);
+    &:hover {
+      background-image: url(~@/assets/icon-stop-b.png);
+    }
+  }
+  .el-button {
+    flex-shrink: 0;
+    margin-left: 10px;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    border-radius: 50%;
+    text-align: center;
+    padding: 0;
+    font-size: 18px;
+  }
+}
+
+// 清除浮动
+.clearfix:after {
+  content: '.';
+  display: block;
+  height: 0;
+  clear: both;
+  visibility: hidden;
+}
+
+.scrollbar-wrapper {
+  overflow-x: hidden;
+}
+// 表格
+.el-table thead {
+  color: @color-text-2;
+}
+.el-table th {
+  background: @color-border-2;
+}
+.el-table__row td {
+  padding: 6px 0;
+}
+// 弹窗
+.el-dialog__header {
+  background-color: @color-border-2;
+  padding: 10px 20px;
+}
+.el-dialog__title {
+  font-size: 15px;
+  font-weight: bold;
+  font-family: '微软雅黑 Bold', '微软雅黑 Regular', '微软雅黑';
+  color: @color-text-1;
+}
+.el-dialog__headerbtn {
+  top: 14px;
+  font-size: 18px;
+}
+.el-dialog__body {
+  padding: 16px 20px;
+}
+.el-dialog__footer {
+  border-top: 1px solid @color-border-2;
+  padding: 12px 20px;
+}
