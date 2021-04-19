@@ -11,7 +11,7 @@ const webCamStore = new Store({
     // 全屏显示
     fullscreen: {
       type: 'boolean',
-      default: true
+      default: false
     },
     // 记住密码
     rememberPassword: {

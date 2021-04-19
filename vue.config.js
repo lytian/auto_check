@@ -74,10 +74,6 @@ module.exports = {
         nsis: {
           oneClick: false, // 是否一键安装
           allowToChangeInstallationDirectory: true // 允许用户选择安装位置
-        },
-        extraResources: {
-          from: './setting.json',
-          to: '../'
         }
       }
     }

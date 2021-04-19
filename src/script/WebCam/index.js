@@ -28,7 +28,7 @@ ipcMain.on('startCheckWebCam', async (event) => {
   const browser = await pie.connect(app, puppeteer)
   webCamWin = new BrowserWindow({
     width: 800,
-    height: 600,
+    height: 500,
     modal: false,
     alwaysOnTop: true,
     skipTaskbar: true,
