@@ -4,6 +4,7 @@ const TerserPlugin = require('terser-webpack-plugin')
 const resolve = dir => {
   return path.join(__dirname, dir)
 }
+process.env.VUE_APP_VERSION = require('./package.json').version
 
 module.exports = {
   publicPath: process.env.NODE_ENV === 'production' ? './' : '/',
@@ -74,6 +75,9 @@ module.exports = {
         nsis: {
           oneClick: false, // 是否一键安装
           allowToChangeInstallationDirectory: true // 允许用户选择安装位置
+        },
+        mac: {
+          icon: 'public/logo.png'
         }
       }
     }

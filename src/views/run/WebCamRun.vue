@@ -27,8 +27,16 @@
       top="8vh"
       width="880px"
       custom-class="data-dialog">
+      <el-form ref="searchForm" :model="searchForm" inline>
+        <el-form-item label="企业名称">
+          <el-input v-model="searchForm.enterpriseName" placeholder="模糊匹配企业名称" clearable @keydown.native.enter="filterList" @clear="filterList" style="width: 180px;"/>
+        </el-form-item>
+        <el-form-item label=" " label-width="50px">
+          <el-checkbox v-model="searchForm.onlyFail" @change="filterList">只查异常</el-checkbox>
+        </el-form-item>
+      </el-form>
       <el-table
-      :data="webCamList"
+      :data="tableList"
       height="450px"
       style="width: 100%">
         <el-table-column type="expand">
@@ -83,7 +91,12 @@ export default {
       running: false,
       progress: 0,
       logList: [],
-      webCamList: []
+      searchForm: {
+        enterpriseName: '',
+        onlyFail: false
+      },
+      webCamList: [],
+      tableList: []
     }
   },
   mounted() {
@@ -130,6 +143,21 @@ export default {
     },
     viewData() {
       this.showDataDialog = true
+      this.searchForm = {
+        enterpriseName: '',
+        onlyFail: false
+      }
+      this.tableList = this.webCamList.concat([])
+    },
+    filterList() {
+      let list = this.webCamList.concat([])
+      if (this.searchForm.enterpriseName) {
+        list = list.filter(o => o.name && o.name.includes(this.searchForm.enterpriseName))
+      }
+      if (this.searchForm.onlyFail) {
+        list = list.filter(o => o.exceptionNum > 0)
+      }
+      this.tableList = list
     }
   }
 }

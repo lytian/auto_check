@@ -36,6 +36,12 @@ ipcMain.on('startCheckWebCam', async (event) => {
     fullscreen: webCamSetting.fullscreen
   })
   webCamWin.setMenuBarVisibility(false)
+  // 重置默认值
+  enterpriseList = []
+  curEnterprise = null
+  paginationNum = 0
+  paginationIndex = 0
+  videoList = []
   const url = webCamSetting.checkUrl
   printLog('打开页面：' + url)
   // 加载指定URL
