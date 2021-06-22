@@ -29,7 +29,7 @@
       custom-class="data-dialog">
       <el-form ref="searchForm" :model="searchForm" inline>
         <el-form-item label="企业名称">
-          <el-input v-model="searchForm.enterpriseName" placeholder="模糊匹配企业名称" clearable @keydown.native.enter="filterList" @clear="filterList" style="width: 180px;"/>
+          <el-input v-model="searchForm.enterpriseName" placeholder="模糊匹配企业名称" clearable @change="filterList" style="width: 180px;"/>
         </el-form-item>
         <el-form-item label=" " label-width="50px">
           <el-checkbox v-model="searchForm.onlyFail" @change="filterList">只查异常</el-checkbox>

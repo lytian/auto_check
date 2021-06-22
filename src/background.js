@@ -14,6 +14,8 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 pie.initialize(app)
+// 忽略HTTPS证书验证
+app.commandLine.appendSwitch('--ignore-certificate-errors', 'true')
 
 async function createWindow () {
   // Create the browser window.
