@@ -21,28 +21,28 @@
 
     <el-dialog
       title="摄像头巡查数据"
-      :visible.sync="showDataDialog"
+      v-model="showDataDialog"
       :close-on-click-modal="false"
       destroy-on-close
       top="8vh"
       width="880px"
       custom-class="data-dialog">
-      <el-form ref="searchForm" :model="searchForm" inline>
+      <el-form ref="searchFormRef" :model="searchForm" inline @submit.prevent>
         <el-form-item label="企业名称">
-          <el-input v-model="searchForm.enterpriseName" placeholder="模糊匹配企业名称" clearable @change="filterList" style="width: 180px;"/>
+          <el-input v-model="searchForm.enterpriseName" placeholder="模糊匹配企业名称" clearable style="width: 180px;"/>
         </el-form-item>
         <el-form-item label=" " label-width="50px">
-          <el-checkbox v-model="searchForm.onlyFail" @change="filterList">只查异常</el-checkbox>
+          <el-checkbox v-model="searchForm.onlyFail">只查异常</el-checkbox>
         </el-form-item>
       </el-form>
       <el-table
-      :data="tableList"
+      :data="filterList"
       height="450px"
       style="width: 100%">
         <el-table-column type="expand">
-          <template slot-scope="props">
+          <template #default="scope">
             <ul class="video-list">
-              <li v-for="(video, index) in props.row.videoList" :key="index" :class="{error: video.statusCode !== 0 && video.statusCode != null}">
+              <li v-for="(video, index) in scope.row.videoList" :key="index" :class="{error: video.statusCode !== 0 && video.statusCode != null}">
                 【{{video.name}}】 {{video.statusStr}}
               </li>
             </ul>
@@ -52,7 +52,9 @@
           label="企业名称"
           prop="name"
           width="240">
-          <span slot-scope="scope" :style="{color: scope.row.exceptionNum > 0 ? 'red' : ''}">{{scope.row.name}}</span>
+          <template #default="scope">
+            <span :style="{color: scope.row.exceptionNum > 0 ? 'red' : ''}">{{scope.row.name}}</span>
+          </template>
         </el-table-column>
         <el-table-column
           label="抵质押数"
@@ -83,81 +85,94 @@
 
 <script>
 import { ipcRenderer } from 'electron'
+import { ref, reactive, toRefs, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
+import { ElMessageBox } from 'element-plus'
 
 export default {
-  data() {
-    return {
+  setup() {
+    const searchForm = reactive({
+      enterpriseName: '',
+      onlyFail: false
+    })
+    const state = reactive({
       showDataDialog: false,
       running: false,
       progress: 0,
       logList: [],
-      searchForm: {
-        enterpriseName: '',
-        onlyFail: false
-      },
-      webCamList: [],
-      tableList: []
-    }
-  },
-  mounted() {
-    ipcRenderer.on('webCamLog', (e, log) => {
-      this.logList.push(log)
-      if (this.$refs.logScrollbar) {
-        this.$nextTick(() => {
-          this.$refs.logScrollbar.wrap.scrollTop = this.$refs.logScrollbar.wrap.scrollHeight
-        })
-      }
+      webCamList: []
     })
-    ipcRenderer.on('webCamProgress', (e, val) => {
-      this.progress = parseFloat((val * 100).toFixed(2))
+    const logScrollbar = ref(null)
+
+    onMounted(() => {
+      ipcRenderer.on('webCamLog', (e, log) => {
+        state.logList.push(log)
+        if (logScrollbar.value && logScrollbar.value.wrap) {
+          nextTick(() => {
+            logScrollbar.value.wrap.scrollTop = logScrollbar.value.wrap.scrollHeight
+          })
+        }
+      })
+      ipcRenderer.on('webCamProgress', (e, val) => {
+        state.progress = parseFloat((val * 100).toFixed(2))
+      })
+      ipcRenderer.on('webCamData', (e, list) => {
+        state.webCamList = list || []
+      })
+      ipcRenderer.on('closeWebCamWin', () => {
+        state.running = false
+      })
     })
-    ipcRenderer.on('webCamData', (e, list) => {
-      this.webCamList = list || []
+
+    onBeforeUnmount(() => {
+      ipcRenderer.send('stopCheckWebCam')
+      // 移除监听器
+      ipcRenderer.removeAllListeners(['webCamLog', 'webCamProgress', 'webCamData', 'closeWebCamWin'])
     })
-    ipcRenderer.on('closeWebCamWin', () => {
-      this.running = false
-    })
-  },
-  beforeDestroy() {
-    ipcRenderer.send('stopCheckWebCam')
-    // 移除监听器
-    ipcRenderer.removeAllListeners(['webCamLog', 'webCamProgress', 'webCamData', 'closeWebCamWin'])
-  },
-  methods: {
-    startCheck() {
+
+    const startCheck = () => {
       ipcRenderer.send('startCheckWebCam')
-      this.running = true
-      this.progress = 0
-      this.webCamList = []
-      this.logList = []
-    },
-    stopCheck() {
-      this.$confirm('是否停止摄像头巡查?', '提示', {
+      state.running = true
+      state.progress = 0
+      state.webCamList = []
+      state.logList = []
+    }
+
+    const stopCheck = () => {
+      ElMessageBox.confirm('是否停止摄像头巡查?', '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
         ipcRenderer.send('stopCheckWebCam')
-        this.running = false
+        state.running = false
       })
-    },
-    viewData() {
-      this.showDataDialog = true
-      this.searchForm = {
-        enterpriseName: '',
-        onlyFail: false
+    }
+
+    const viewData = () => {
+      state.showDataDialog = true
+      // searchForm.enterpriseName = ''
+      // searchForm.onlyFail = false
+    }
+
+    const filterList = computed(() => {
+      let list = state.webCamList
+      if (searchForm.enterpriseName) {
+        list = list.filter(o => o.name && o.name.includes(searchForm.enterpriseName))
       }
-      this.tableList = this.webCamList.concat([])
-    },
-    filterList() {
-      let list = this.webCamList.concat([])
-      if (this.searchForm.enterpriseName) {
-        list = list.filter(o => o.name && o.name.includes(this.searchForm.enterpriseName))
-      }
-      if (this.searchForm.onlyFail) {
+      if (searchForm.onlyFail) {
         list = list.filter(o => o.exceptionNum > 0)
       }
-      this.tableList = list
+      return list
+    })
+
+    return {
+      ...toRefs(state),
+      searchForm,
+      logScrollbar,
+      startCheck,
+      stopCheck,
+      viewData,
+      filterList
     }
   }
 }

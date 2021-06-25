@@ -2,8 +2,8 @@ import { BrowserWindow, app, ipcMain } from 'electron'
 import pie from 'puppeteer-in-electron'
 import puppeteer from 'puppeteer-core'
 import moment from 'moment'
-import { printLog } from '../../utils/log'
-import { getWebCamSetting, setWebCamSettingItem } from '../../utils/store'
+import { printLog } from '../utils/log'
+import { getWebCamSetting, setWebCamSettingItem } from '../utils/store'
 
 let rootWin
 let webCamWin
@@ -33,6 +33,7 @@ ipcMain.on('startCheckWebCam', async (event) => {
     alwaysOnTop: true,
     skipTaskbar: true,
     minimizable: false,
+    resizable: false,
     fullscreen: webCamSetting.fullscreen
   })
   webCamWin.setMenuBarVisibility(false)
@@ -150,6 +151,7 @@ function asyncTimeout(time) {
 
 /** 获取当前企业 */
 async function getCurEnterprise() {
+  if (!webCamPage || !webCamWin) return
   const videoTotal = await getVideoTotal()
   const cattleNum = await webCamPage.$eval('.video-pagination .cattle-num span', (ele) => ele.innerText)
   const curText = await webCamPage.$eval('.enterprise-list .active', (ele) => ele.innerText)
@@ -190,6 +192,7 @@ async function getCurEnterprise() {
 
 /** 获取截图情况 */
 async function getEnterpriseCapture(video, index) {
+  if (!webCamPage || !webCamWin) return
   // 查找当前页，是否有成功的摄像头
   printLog(`获取【${video.name}】监控截图`)
   // 点击截图按钮
@@ -206,12 +209,14 @@ async function getEnterpriseCapture(video, index) {
         res.json().then(data => {
           if (data.code === 200) {
             if (data.total === 0) {
+              if (curEnterprise.remark === '所有截图正常') curEnterprise.remark = ''
               curEnterprise.remark += '【全部截图】无数据'
               return
             }
             // 查询当日是否有截图
             const index = data.data.findIndex(o => o.attachmentName.startsWith(moment().format('YYYYMMDD')))
             if (index === -1) {
+              if (curEnterprise.remark === '所有截图正常') curEnterprise.remark = ''
               curEnterprise.remark += '【全部截图】今日无数据'
             }
           }
@@ -255,6 +260,7 @@ async function getEnterpriseCapture(video, index) {
 
 /** 获取视频总数 */
 async function getVideoTotal() {
+  if (!webCamPage || !webCamWin) return
   let videoNum = 0
   await webCamPage.waitForResponse(async (res) => {
     if (res.url().indexOf('show/camera/videoList') > -1) {
@@ -273,6 +279,7 @@ async function getVideoTotal() {
 
 /** 获取当前页视频 */
 async function getCurPageVideo() {
+  if (!webCamPage || !webCamWin) return
   paginationIndex = parseInt(await webCamPage.$eval('.video-pagination .el-pager .active', (ele) => ele.innerText))
   videoList = await webCamPage.$$eval('.video-item', (elements) => {
     const eles = []
@@ -294,6 +301,7 @@ async function getCurPageVideo() {
 
 /** 处理视频结果 */
 async function handleVideo(video, code) {
+  if (!webCamPage || !webCamWin) return
   let msg
   switch (code) {
     case 0:
@@ -367,6 +375,7 @@ async function handleVideo(video, code) {
 
 /** 跳转下一页 */
 async function nextPage() {
+  if (!webCamPage || !webCamWin) return
   printLog(`进入第${paginationIndex + 1}页`)
   await webCamPage.tap(`.video-pagination .el-pager .number:nth-child(${paginationIndex + 1})`)
   // 等待数据加载完成
@@ -376,6 +385,7 @@ async function nextPage() {
 
 /** 跳转下一个企业 */
 async function nextEnterprise() {
+  if (!webCamPage || !webCamWin) return
   const entIndex = enterpriseList.findIndex(o => o.name === curEnterprise.name)
   if (entIndex === (enterpriseList.length - 1)) {
     printLog('已巡查完毕')

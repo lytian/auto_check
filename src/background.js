@@ -2,10 +2,11 @@
 
 import { app, protocol, BrowserWindow } from 'electron'
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
-import installExtension, { VUEJS_DEVTOOLS } from 'electron-devtools-installer'
+import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
 import pie from 'puppeteer-in-electron'
+import Store from 'electron-store'
 import { initLog } from './utils/log'
-import './script/WebCam/index'
+import './script/WebCam'
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
 // Scheme must be registered before the app is ready
@@ -13,21 +14,25 @@ protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { secure: true, standard: true } }
 ])
 
+// 在Electron中使用puppetter
 pie.initialize(app)
 // 忽略HTTPS证书验证
 app.commandLine.appendSwitch('--ignore-certificate-errors', 'true')
+Store.initRenderer()
 
 async function createWindow () {
   // Create the browser window.
   const win = new BrowserWindow({
     width: 1080,
     height: 720,
+    autoHideMenuBar: true,
     webPreferences: {
-      contextIsolation: false,
-      nodeIntegration: process.env.ELECTRON_NODE_INTEGRATION
+      // Use pluginOptions.nodeIntegration, leave this alone
+      // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
+      nodeIntegration: process.env.ELECTRON_NODE_INTEGRATION,
+      contextIsolation: !process.env.ELECTRON_NODE_INTEGRATION
     }
   })
-  win.setMenuBarVisibility(false)
   initLog()
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
@@ -63,7 +68,7 @@ app.on('ready', async () => {
   if (isDevelopment && !process.env.IS_TEST) {
     // Install Vue Devtools
     try {
-      await installExtension(VUEJS_DEVTOOLS)
+      await installExtension(VUEJS3_DEVTOOLS)
     } catch (e) {
       console.error('Vue Devtools failed to install:', e.toString())
     }

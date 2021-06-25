@@ -1,5 +1,5 @@
 <template>
-  <el-form class="run-box" :model="webCamForm" :rules="webCamRules" ref="webCamForm" label-width="100px">
+  <el-form class="run-box" :model="webCamForm" :rules="webCamRules" ref="webCamFormRef" label-width="100px">
     <p class="title">摄像头巡查设置</p>
     <el-form-item label="巡查地址" prop="checkUrl">
       <el-input v-model.trim="webCamForm.checkUrl" placeholder="请输入巡查地址"></el-input>
@@ -30,49 +30,68 @@
 </template>
 
 <script>
-import { getWebCamSetting, resetWebCamSetting, setWebCamSetting } from '../../utils/store'
+import { getWebCamSetting, resetWebCamSetting, setWebCamSetting } from '@/utils/store'
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 
 export default {
-  data() {
-    return {
-      webCamForm: {
-        checkUrl: '',
-        fullscreen: true,
-        rememberPassword: true,
-        captureEnterpriseName: '',
-        captureVideoName: ''
-      },
-      webCamRules: {
-        checkUrl: { required: true, message: '请输入巡查地址', trigger: 'blur' },
-        fullscreen: { required: true, type: 'boolean', massage: '请选择', trigger: 'blur' },
-        rememberPassword: { required: true, type: 'boolean', massage: '请选择', trigger: 'blur' },
-        captureEnterpriseName: { required: true, message: '请输入截图企业名称', trigger: 'blur' },
-        captureVideoName: { required: true, message: '请输入截图摄像头名称', trigger: 'blur' }
+  setup() {
+    const webCamForm = reactive({
+      checkUrl: '',
+      fullscreen: true,
+      rememberPassword: true,
+      captureEnterpriseName: '',
+      captureVideoName: ''
+    })
+    const webCamRules = reactive({
+      checkUrl: { required: true, message: '请输入巡查地址', trigger: 'blur' },
+      fullscreen: { required: true, type: 'boolean', massage: '请选择', trigger: 'blur' },
+      rememberPassword: { required: true, type: 'boolean', massage: '请选择', trigger: 'blur' },
+      captureEnterpriseName: { required: true, message: '请输入截图企业名称', trigger: 'blur' },
+      captureVideoName: { required: true, message: '请输入截图摄像头名称', trigger: 'blur' }
+    })
+    const webCamFormRef = ref(null)
+
+    onMounted(() => {
+      const obj = getWebCamSetting()
+      for (const key in webCamForm) {
+        if (Object.hasOwnProperty.call(obj, key)) {
+          webCamForm[key] = obj[key]
+        }
       }
-    }
-  },
-  created() {
-    this.webCamForm = getWebCamSetting()
-  },
-  methods: {
-    submitWebCam() {
-      this.$refs.webCamForm.validate(valid => {
+    })
+
+    const submitWebCam = () => {
+      webCamFormRef.value.validate(valid => {
         if (valid) {
-          setWebCamSetting(this.webCamForm)
-          this.$message.success({
+          setWebCamSetting(webCamForm)
+          ElMessage.success({
             showClose: true,
             message: '摄像头巡查设置成功'
           })
         }
       })
-    },
-    resetWebCam() {
+    }
+    const resetWebCam = () => {
       resetWebCamSetting()
-      this.webCamForm = getWebCamSetting()
-      this.$message.success({
+      const obj = getWebCamSetting()
+      for (const key in webCamForm) {
+        if (Object.hasOwnProperty.call(obj, key)) {
+          webCamForm[key] = obj[key]
+        }
+      }
+      ElMessage.success({
         showClose: true,
         message: '摄像头巡查设置成功'
       })
+    }
+
+    return {
+      webCamForm,
+      webCamRules,
+      webCamFormRef,
+      submitWebCam,
+      resetWebCam
     }
   }
 }

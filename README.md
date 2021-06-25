@@ -1,4 +1,4 @@
-# auto-check
+# auto-check-3
 
 ## Project setup
 ```

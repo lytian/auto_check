@@ -8,7 +8,6 @@ process.env.VUE_APP_VERSION = require('./package.json').version
 
 module.exports = {
   publicPath: process.env.NODE_ENV === 'production' ? './' : '/',
-  productionSourceMap: false, // 不需要生产环境的 source map
   chainWebpack: config => {
     // 配置别名
     config.resolve.alias
@@ -61,11 +60,11 @@ module.exports = {
         appId: 'com.ahf.autoCheck',
         productName: '自动巡查',
         copyright: 'Copyright © 2021 贵州东彩供应链有限公司',
-        artifactName: 'AutoCheck Setup ${version}.${ext}', // 安装包名
+        artifactName: 'AutoCheck Setup ${version}.${ext}',
         win: {
           icon: 'public/logo.png',
           target: {
-            target: 'nsis', // 打包为nsis安装文件,
+            target: 'nsis',
             arch: [
               'x64',
               'ia32'
@@ -73,8 +72,8 @@ module.exports = {
           }
         },
         nsis: {
-          oneClick: false, // 是否一键安装
-          allowToChangeInstallationDirectory: true // 允许用户选择安装位置
+          oneClick: false,
+          allowToChangeInstallationDirectory: true
         },
         mac: {
           icon: 'public/logo.png'
