@@ -150,8 +150,8 @@ export default {
 
     const viewData = () => {
       state.showDataDialog = true
-      // searchForm.enterpriseName = ''
-      // searchForm.onlyFail = false
+      searchForm.enterpriseName = ''
+      searchForm.onlyFail = false
     }
 
     const filterList = computed(() => {
