@@ -20,99 +20,103 @@ let videoList = []
 
 // 开启巡查 - 摄像头
 ipcMain.on('startCheckWebCam', async (event) => {
-  webCamSetting = getWebCamSetting()
-  rootWin = BrowserWindow.getFocusedWindow()
-  if (rootWin == null) {
-    rootWin = BrowserWindow.fromId(1)
-  }
-  const browser = await pie.connect(app, puppeteer)
-  webCamWin = new BrowserWindow({
-    width: 800,
-    height: 500,
-    modal: false,
-    alwaysOnTop: true,
-    skipTaskbar: true,
-    minimizable: false,
-    resizable: false,
-    fullscreen: webCamSetting.fullscreen
-  })
-  webCamWin.setMenuBarVisibility(false)
-  // 重置默认值
-  enterpriseList = []
-  curEnterprise = null
-  paginationNum = 0
-  paginationIndex = 0
-  videoList = []
-  const url = webCamSetting.checkUrl
-  printLog('打开页面：' + url)
-  // 加载指定URL
-  await webCamWin.loadURL(url)
-  // 关闭该弹窗
-  webCamWin.on('closed', () => {
-    if (rootWin) rootWin.webContents.send('closeWebCamWin')
-    printLog('关闭页面，停止巡查')
-  })
-  webCamPage = await pie.getPage(browser, webCamWin)
-  // 等待页面加载完成
-  await webCamPage.waitForSelector('.el-form .el-form-item')
-  // 设置用户名和密码
-  if (webCamSetting.rememberPassword) {
-    if (webCamSetting.username) await webCamPage.type('.el-form .el-form-item:nth-child(2) input', webCamSetting.username, { delay: 100 })
-    if (webCamSetting.password) await webCamPage.type('.el-form .el-form-item:nth-child(3) input', webCamSetting.password, { delay: 100 })
-  }
-  // 自动聚焦到用户名
-  if (webCamSetting.rememberPassword && webCamSetting.username) {
-    await webCamPage.focus('.el-form .el-form-item:nth-child(4) input')
-  } else {
-    await webCamPage.focus('.el-form .el-form-item:nth-child(2) input')
-  }
-  // 监听登录请求
-  webCamPage.on('request', loginRequest)
-  // 等待登录成功
-  await webCamPage.waitForResponse(async res => {
-    if (res.url().indexOf('/authentication/login') > -1) {
-      if (res.status() === 200) {
-        const data = await res.json()
-        if (data.code === 200) {
-          return true
+  try {
+    webCamSetting = getWebCamSetting()
+    rootWin = BrowserWindow.getFocusedWindow()
+    if (rootWin == null) {
+      rootWin = BrowserWindow.fromId(1)
+    }
+    const webCamBrowser = await pie.connect(app, puppeteer)
+    webCamWin = new BrowserWindow({
+      width: 800,
+      height: 500,
+      modal: false,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      minimizable: false,
+      resizable: false,
+      fullscreen: webCamSetting.fullscreen
+    })
+    webCamWin.setMenuBarVisibility(false)
+    // 重置默认值
+    enterpriseList = []
+    curEnterprise = null
+    paginationNum = 0
+    paginationIndex = 0
+    videoList = []
+    const url = webCamSetting.checkUrl
+    printLog('打开页面：' + url)
+    // 加载指定URL
+    await webCamWin.loadURL(url)
+    // 关闭该弹窗
+    webCamWin.on('closed', () => {
+      if (rootWin) rootWin.webContents.send('closeWebCamWin')
+      printLog('关闭页面，停止巡查')
+    })
+    webCamPage = await pie.getPage(webCamBrowser, webCamWin)
+    // 等待页面加载完成
+    await webCamPage.waitForSelector('.el-form .el-form-item')
+    // 设置用户名和密码
+    if (webCamSetting.rememberPassword) {
+      if (webCamSetting.username) await webCamPage.type('.el-form .el-form-item:nth-child(2) input', webCamSetting.username, { delay: 100 })
+      if (webCamSetting.password) await webCamPage.type('.el-form .el-form-item:nth-child(3) input', webCamSetting.password, { delay: 100 })
+    }
+    // 自动聚焦到用户名
+    if (webCamSetting.rememberPassword && webCamSetting.username) {
+      await webCamPage.focus('.el-form .el-form-item:nth-child(4) input')
+    } else {
+      await webCamPage.focus('.el-form .el-form-item:nth-child(2) input')
+    }
+    // 监听登录请求
+    webCamPage.on('request', loginRequest)
+    // 等待登录成功
+    await webCamPage.waitForResponse(async res => {
+      if (res.url().indexOf('/authentication/login') > -1) {
+        if (res.status() === 200) {
+          const data = await res.json()
+          if (data.code === 200) {
+            return true
+          }
         }
       }
+    }, {
+      timeout: 0
+    })
+    printLog('登录成功！登录账号：' + username)
+    // 存储用户名和密码
+    if (webCamSetting.rememberPassword) {
+      setWebCamSettingItem('username', username)
+      setWebCamSettingItem('password', password)
     }
-  }, {
-    timeout: 0
-  })
-  printLog('登录成功！登录账号：' + username)
-  // 存储用户名和密码
-  if (webCamSetting.rememberPassword) {
-    setWebCamSettingItem('username', username)
-    setWebCamSettingItem('password', password)
-  }
-  // 移除网络请求监听
-  webCamPage.removeListener('request', loginRequest)
-  await asyncTimeout(500)
-  printLog('跳转【视频监控】页面，' + url + 'video')
-  // 挂载方法到window对象
-  await webCamPage.exposeFunction('onCustomEvent', (ev) => {
-    if (ev.origin === 'https://open.ys7.com' && typeof ev.data === 'object') {
-      const { id, code } = ev.data
-      const video = videoList.find(o => (o.id === 'frame' + id))
-      if (video) {
-        handleVideo(video, code)
+    // 移除网络请求监听
+    webCamPage.removeListener('request', loginRequest)
+    await asyncTimeout(500)
+    printLog('跳转【视频监控】页面，' + url + 'video')
+    // 挂载方法到window对象
+    await webCamPage.exposeFunction('onCustomEvent', (ev) => {
+      if (ev.origin === 'https://open.ys7.com' && typeof ev.data === 'object') {
+        const { id, code } = ev.data
+        const video = videoList.find(o => (o.id === 'frame' + id))
+        if (video) {
+          handleVideo(video, code)
+        }
       }
-    }
-  })
-  // 监听message事件
-  await webCamPage.evaluateOnNewDocument(() => {
-    window.addEventListener('message', (ev) => {
-      window.onCustomEvent({
-        origin: ev.origin,
-        data: ev.data
-      })
-    }, false)
-  })
-  await webCamPage.goto(url + 'video')
-  await getCurEnterprise()
-  await getCurPageVideo()
+    })
+    // 监听message事件
+    await webCamPage.evaluateOnNewDocument(() => {
+      window.addEventListener('message', (ev) => {
+        window.onCustomEvent({
+          origin: ev.origin,
+          data: ev.data
+        })
+      }, false)
+    })
+    await webCamPage.goto(url + 'video')
+    await getCurEnterprise()
+    await getCurPageVideo()
+  } catch (err) {
+    console.log(err)
+  }
 })
 
 // 关闭巡查 - 摄像头
@@ -136,7 +140,7 @@ async function stopCheck() {
   }
   webCamPage = null
   if (webCamWin && !webCamWin.isDestroyed()) {
-    webCamWin.close()
+    await webCamWin.close()
   }
   webCamWin = null
 }
@@ -185,7 +189,7 @@ async function getCurEnterprise() {
   sendWebCamData()
   curEnterprise.videoNum = videoTotal
   curEnterprise.cattleNum = cattleNum
-  paginationNum = await webCamPage.$$eval('.video-pagination .el-pager .number', (elements) => elements.length)
+  paginationNum = parseInt(await webCamPage.$eval('.video-pagination .el-pager .number:last-child', (ele) => ele.innerText))
   videoList = []
   paginationIndex = 1
 }
@@ -377,7 +381,7 @@ async function handleVideo(video, code) {
 async function nextPage() {
   if (!webCamPage || !webCamWin) return
   printLog(`进入第${paginationIndex + 1}页`)
-  await webCamPage.tap(`.video-pagination .el-pager .number:nth-child(${paginationIndex + 1})`)
+  await webCamPage.tap('.video-pagination .el-pagination .btn-next')
   // 等待数据加载完成
   await getVideoTotal()
   await getCurPageVideo()

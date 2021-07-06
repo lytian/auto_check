@@ -4,7 +4,7 @@ import { app, protocol, BrowserWindow } from 'electron'
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer'
 import pie from 'puppeteer-in-electron'
-import Store from 'electron-store'
+import ElectronStore from 'electron-store'
 import { initLog } from './utils/log'
 import './script/WebCam'
 const isDevelopment = process.env.NODE_ENV !== 'production'
@@ -16,16 +16,17 @@ protocol.registerSchemesAsPrivileged([
 
 // 在Electron中使用puppetter
 pie.initialize(app)
+// 初始化Electron Store
+ElectronStore.initRenderer()
 // 忽略HTTPS证书验证
 app.commandLine.appendSwitch('--ignore-certificate-errors', 'true')
-Store.initRenderer()
 
 async function createWindow () {
   // Create the browser window.
   const win = new BrowserWindow({
     width: 1080,
     height: 720,
-    autoHideMenuBar: true,
+    // autoHideMenuBar: true,
     webPreferences: {
       // Use pluginOptions.nodeIntegration, leave this alone
       // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
@@ -33,7 +34,6 @@ async function createWindow () {
       contextIsolation: !process.env.ELECTRON_NODE_INTEGRATION
     }
   })
-  initLog()
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode
@@ -74,6 +74,8 @@ app.on('ready', async () => {
     }
   }
   createWindow()
+  // 初始化Log
+  initLog()
 })
 
 // Exit cleanly on request from parent process in development mode.
