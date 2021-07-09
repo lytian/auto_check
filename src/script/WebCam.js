@@ -90,15 +90,48 @@ ipcMain.on('startCheckWebCam', async (event) => {
     }
     // 移除网络请求监听
     webCamPage.removeListener('request', loginRequest)
-    await asyncTimeout(500)
+    await webCamPage.waitForTimeout(500)
     printLog('跳转【视频监控】页面，' + url + 'video')
     // 挂载方法到window对象
     await webCamPage.exposeFunction('onCustomEvent', (ev) => {
       if (ev.origin === 'https://open.ys7.com' && typeof ev.data === 'object') {
         const { id, code } = ev.data
         const video = videoList.find(o => (o.id === 'frame' + id))
-        if (video) {
-          handleVideo(video, code)
+        if (video && video.statusCode == null) {
+          let msg
+          switch (code) {
+            case 0:
+              msg = '正常'
+              break
+            case 5404:
+              msg = '设备不在线'
+              break
+            case 5405:
+              msg = '流媒体响应超时'
+              break
+            case 5451:
+              msg = '设备不支持的码流类型'
+              break
+            case 6519:
+              msg = '设备推流链路网络不稳定'
+              break
+            case 9048:
+              msg = '同时播放数限制'
+              break
+            case 6106:
+              msg = '设备返回错误码4'
+              break
+            case 20018:
+              msg = '用户不拥有该设备'
+              break
+            default:
+              msg = '未知错误'
+              break
+          }
+          video.statusCode = code
+          video.statusStr = msg
+          printLog('VideoName=' + video.name + ', VideoCode=' + video.statusCode)
+          handleVideo()
         }
       }
     })
@@ -143,14 +176,6 @@ async function stopCheck() {
     await webCamWin.close()
   }
   webCamWin = null
-}
-
-function asyncTimeout(time) {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      resolve()
-    }, time)
-  })
 }
 
 /** 获取当前企业 */
@@ -229,7 +254,7 @@ async function getEnterpriseCapture(video, index) {
       return true
     }
   })
-  await asyncTimeout(200)
+  await webCamPage.waitForTimeout(200)
   const alermEle = await webCamPage.$('.capture-tab .capture-tab-item:nth-child(2)')
   if (alermEle == null) return
   setTimeout(() => {
@@ -259,7 +284,7 @@ async function getEnterpriseCapture(video, index) {
   })
   // 关闭弹窗
   await webCamPage.tap('.capture-dialog .monitor-toast-close')
-  await asyncTimeout(500)
+  await webCamPage.waitForTimeout(500)
 }
 
 /** 获取视频总数 */
@@ -304,40 +329,8 @@ async function getCurPageVideo() {
 }
 
 /** 处理视频结果 */
-async function handleVideo(video, code) {
+async function handleVideo() {
   if (!webCamPage || !webCamWin) return
-  let msg
-  switch (code) {
-    case 0:
-      msg = '正常'
-      break
-    case 5404:
-      msg = '设备不在线'
-      break
-    case 5405:
-      msg = '流媒体响应超时'
-      break
-    case 5451:
-      msg = '设备不支持的码流类型'
-      break
-    case 6519:
-      msg = '设备推流链路网络不稳定'
-      break
-    case 9048:
-      msg = '同时播放数限制'
-      break
-    case 6106:
-      msg = '设备返回错误码4'
-      break
-    case 20018:
-      msg = '用户不拥有该设备'
-      break
-    default:
-      msg = '未知错误'
-      break
-  }
-  video.statusCode = code
-  video.statusStr = msg
   // 是否全部返回
   if (videoList.every(o => o.statusCode != null)) {
     printLog(`${curEnterprise.name}: 第${paginationIndex}页的视频已处理完毕`)
