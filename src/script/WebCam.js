@@ -17,6 +17,7 @@ let curEnterprise
 let paginationNum = 0
 let paginationIndex = 0
 let videoList = []
+let pageTimer // 页面巡查超时定时器
 
 // 开启巡查 - 摄像头
 ipcMain.on('startCheckWebCam', async (event) => {
@@ -130,7 +131,6 @@ ipcMain.on('startCheckWebCam', async (event) => {
           }
           video.statusCode = code
           video.statusStr = msg
-          printLog('VideoName=' + video.name + ', VideoCode=' + video.statusCode)
           handleVideo()
         }
       }
@@ -149,6 +149,7 @@ ipcMain.on('startCheckWebCam', async (event) => {
     await getCurPageVideo()
   } catch (err) {
     console.log(err)
+    stopPageTimer()
   }
 })
 
@@ -166,6 +167,7 @@ async function loginRequest(req) {
 
 /** 停止检查 */
 async function stopCheck() {
+  stopPageTimer()
   if (webCamPage && !webCamPage.isClosed()) {
     // 移除网络请求监听
     webCamPage.removeListener('request', loginRequest)
@@ -326,6 +328,7 @@ async function getCurPageVideo() {
     })
     return eles
   })
+  startPageTimer()
 }
 
 /** 处理视频结果 */
@@ -405,4 +408,30 @@ function sendWebCamProgress() {
   if (rootWin == null) return
   const finishedNum = enterpriseList.filter(o => o.finished === true).length
   rootWin.webContents.send('webCamProgress', finishedNum / enterpriseList.length)
+}
+
+function startPageTimer(time = 3 * 60 * 1000) {
+  stopPageTimer()
+
+  pageTimer = setTimeout(() => {
+    // 把所有未加载出的视频添加默认状态
+    videoList.forEach(item => {
+      if (item.statusCode == null) {
+        item.statusCode = -1
+        item.statusStr = '页面处理超时'
+      }
+    })
+    // 处理视频加载结果
+    handleVideo()
+    printLog('页面视频处理超时，已跳过超时视频', 'red')
+    // 停止延时器
+    stopPageTimer()
+  }, time)
+}
+
+function stopPageTimer() {
+  if (pageTimer != null) {
+    clearTimeout(pageTimer)
+    pageTimer = null
+  }
 }
