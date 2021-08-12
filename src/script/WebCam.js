@@ -206,6 +206,7 @@ async function getCurEnterprise() {
   }
   curEnterprise = enterpriseList.find(o => o.name === curText)
   printLog(curEnterprise.name + ': 抵质押数=' + cattleNum + ', 监控视频数=' + videoTotal)
+
   if (videoTotal === 0) {
     curEnterprise.finished = true
     sendWebCamProgress()
