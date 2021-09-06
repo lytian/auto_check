@@ -16,7 +16,7 @@
       <div v-if="!running" class="run-btn start-btn" @click="startCheck" title="开始巡查"></div>
       <div v-else class="run-btn stop-btn" @click="stopCheck" title="停止巡查"></div>
       <el-button icon="el-icon-view" circle title="查看数据" @click="viewData"></el-button>
-      <el-button icon="el-icon-download" circle title="导出数据"></el-button>
+      <el-button icon="el-icon-download" circle title="导出数据" @click="openDownloadForm"></el-button>
     </div>
 
     <el-dialog
@@ -80,35 +80,64 @@
         </el-table-column>
       </el-table>
     </el-dialog>
+
+    <el-dialog
+      title="导出摄巡查数据"
+      v-model="showDownloadForm"
+      :close-on-click-modal="false"
+      destroy-on-close
+      top="8vh"
+      width="640px"
+      custom-class="data-dialog">
+      <el-form ref="downloadFormRef" :model="downloadForm" label-width="80px" @submit.prevent>
+        <el-form-item label="巡查人" prop="name" :rules="{ required: true, message: '请输入巡查人姓名', trigger: 'blur' }">
+          <el-input v-model="downloadForm.name" placeholder="请输入巡查人姓名" maxlength="10"/>
+        </el-form-item>
+        <el-form-item label="离线基站" prop="offDevice">
+          <el-input v-model="downloadForm.offDevice" type="textarea" :rows="10" placeholder="请钉钉预警中复制最新的预警数据" @keydown.enter="download"/>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showDownloadForm = false">取 消</el-button>
+        <el-button type="primary" @click="download">导 出</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import { ipcRenderer } from 'electron'
-import { ref, reactive, toRefs, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
-import { ElMessageBox } from 'element-plus'
+import { ref, reactive, toRefs, onMounted, onBeforeUnmount, nextTick, computed, unref } from 'vue'
+import { ElMessageBox, ElMessage } from 'element-plus'
 
 export default {
   setup() {
-    const searchForm = reactive({
-      enterpriseName: '',
-      onlyFail: false
-    })
+    const logScrollbar = ref(null)
+    const downloadFormRef = ref(null)
     const state = reactive({
       showDataDialog: false,
+      showDownloadForm: false,
       running: false,
       progress: 0,
       logList: [],
       webCamList: []
     })
-    const logScrollbar = ref(null)
+    const searchForm = reactive({
+      enterpriseName: '',
+      onlyFail: false
+    })
+    const downloadForm = reactive({
+      name: '',
+      offDevice: ''
+    })
 
     onMounted(() => {
       ipcRenderer.on('webCamLog', (e, log) => {
         state.logList.push(log)
-        if (logScrollbar.value && logScrollbar.value.wrap) {
+        const bar = unref(logScrollbar)
+        if (bar && bar.wrap) {
           nextTick(() => {
-            logScrollbar.value.wrap.scrollTop = logScrollbar.value.wrap.scrollHeight
+            bar.wrap.scrollTop = bar.wrap.scrollHeight
           })
         }
       })
@@ -121,6 +150,10 @@ export default {
       ipcRenderer.on('closeWebCamWin', () => {
         state.running = false
       })
+      ipcRenderer.on('saveFinished', () => {
+        ElMessage.success('保存成功')
+        state.showDownloadForm = false
+      })
     })
 
     onBeforeUnmount(() => {
@@ -128,31 +161,6 @@ export default {
       // 移除监听器
       ipcRenderer.removeAllListeners(['webCamLog', 'webCamProgress', 'webCamData', 'closeWebCamWin'])
     })
-
-    const startCheck = () => {
-      ipcRenderer.send('startCheckWebCam')
-      state.running = true
-      state.progress = 0
-      state.webCamList = []
-      state.logList = []
-    }
-
-    const stopCheck = () => {
-      ElMessageBox.confirm('是否停止摄像头巡查?', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        ipcRenderer.send('stopCheckWebCam')
-        state.running = false
-      })
-    }
-
-    const viewData = () => {
-      state.showDataDialog = true
-      searchForm.enterpriseName = ''
-      searchForm.onlyFail = false
-    }
 
     const filterList = computed(() => {
       let list = state.webCamList
@@ -165,14 +173,81 @@ export default {
       return list
     })
 
+    /** 开始巡查 */
+    const startCheck = () => {
+      ipcRenderer.send('startCheckWebCam')
+      state.running = true
+      state.progress = 0
+      state.webCamList = []
+      state.logList = []
+    }
+
+    /** 停止巡查 */
+    const stopCheck = () => {
+      ElMessageBox.confirm('是否停止摄像头巡查?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        ipcRenderer.send('stopCheckWebCam')
+        state.running = false
+      })
+    }
+
+    /** 查看数据 */
+    const viewData = () => {
+      state.showDataDialog = true
+      searchForm.enterpriseName = ''
+      searchForm.onlyFail = false
+    }
+
+    /** 打开下载弹窗 */
+    const openDownloadForm = () => {
+      if (state.running) return
+      if (state.progress === 0) {
+        ElMessage.warning('请先开始摄像头巡查！')
+        return
+      }
+
+      if (state.progress < 100) {
+        ElMessageBox.confirm('摄像头还未巡查完毕，是否继续导出数据？', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          state.showDownloadForm = true
+        })
+        return
+      }
+      state.showDownloadForm = true
+    }
+
+    /** 下载Excel */
+    const download = () => {
+      const downladFormEl = unref(downloadFormRef)
+      downladFormEl.validate((valid) => {
+        if (valid) {
+          ipcRenderer.send('openSaveFileDialog', {
+            name: downloadForm.name,
+            offDevice: downloadForm.offDevice,
+            webCamList: JSON.parse(JSON.stringify(state.webCamList))
+          })
+        }
+      })
+    }
+
     return {
       ...toRefs(state),
-      searchForm,
       logScrollbar,
+      downloadFormRef,
+      searchForm,
+      downloadForm,
+      filterList,
       startCheck,
       stopCheck,
       viewData,
-      filterList
+      openDownloadForm,
+      download
     }
   }
 }

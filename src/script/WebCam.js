@@ -1,9 +1,10 @@
-import { BrowserWindow, app, ipcMain } from 'electron'
+import { BrowserWindow, app, ipcMain, dialog } from 'electron'
 import pie from 'puppeteer-in-electron'
 import puppeteer from 'puppeteer-core'
 import moment from 'moment'
 import { printLog } from '../utils/log'
 import { getWebCamSetting, setWebCamSettingItem } from '../utils/store'
+import exportWebCam from './exportWebCam'
 
 let rootWin
 let webCamWin
@@ -125,6 +126,9 @@ ipcMain.on('startCheckWebCam', async (event) => {
             case 20018:
               msg = '用户不拥有该设备'
               break
+            case 10001:
+              msg = 'ezopen协议格式有误'
+              break
             default:
               msg = '未知错误'
               break
@@ -156,6 +160,26 @@ ipcMain.on('startCheckWebCam', async (event) => {
 // 关闭巡查 - 摄像头
 ipcMain.on('stopCheckWebCam', () => {
   stopCheck()
+})
+
+// 打开保存文件弹窗
+ipcMain.on('openSaveFileDialog', (event, arg) => {
+  const filename = `/生产异常巡查(${moment().format('YYYY-MM-DD')}).xlsx`
+  dialog.showSaveDialog({
+    title: '导出Excel文件',
+    defaultPath: filename,
+    filters: [
+      {
+        name: 'Excel Files',
+        extensions: ['xlsx']
+      }
+    ]
+  }).then(res => {
+    if (!res.canceled) {
+      exportWebCam(arg.webCamList, arg.name, arg.offDevice, res.filePath)
+      event.sender.send('saveFinished', res.filePath)
+    }
+  })
 })
 
 async function loginRequest(req) {

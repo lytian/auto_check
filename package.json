@@ -1,6 +1,6 @@
 {
   "name": "auto-check-3",
-  "version": "0.2.1",
+  "version": "0.2.3",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -16,12 +16,15 @@
     "core-js": "^3.6.5",
     "electron-store": "^8.0.0",
     "element-plus": "^1.0.2-beta.28",
+    "lodash": "^4.17.21",
     "moment": "^2.29.1",
     "puppeteer-core": "^10.0.0",
     "puppeteer-in-electron": "^3.0.4",
     "vue": "^3.0.0",
     "vue-router": "^4.0.0-0",
-    "vuex": "^4.0.0-0"
+    "vuex": "^4.0.0-0",
+    "xlsx": "^0.17.1",
+    "xlsx-style": "^0.8.13"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "~4.5.0",
