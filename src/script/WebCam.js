@@ -92,7 +92,7 @@ ipcMain.on('startCheckWebCam', async (event) => {
     }
     // 移除网络请求监听
     webCamPage.removeListener('request', loginRequest)
-    await webCamPage.waitForTimeout(500)
+    await webCamPage.waitFor(500)
     printLog('跳转【视频监控】页面，' + url + 'video')
     // 挂载方法到window对象
     await webCamPage.exposeFunction('onCustomEvent', (ev) => {
@@ -244,6 +244,7 @@ async function getCurEnterprise() {
   paginationNum = parseInt(await webCamPage.$eval('.video-pagination .el-pager .number:last-child', (ele) => ele.innerText))
   videoList = []
   paginationIndex = 1
+  await webCamPage.waitFor(500)
 }
 
 /** 获取截图情况 */
@@ -281,7 +282,7 @@ async function getEnterpriseCapture(video, index) {
       return true
     }
   })
-  await webCamPage.waitForTimeout(200)
+  await webCamPage.waitFor(200)
   const alermEle = await webCamPage.$('.capture-tab .capture-tab-item:nth-child(2)')
   if (alermEle == null) return
   setTimeout(() => {
@@ -311,7 +312,7 @@ async function getEnterpriseCapture(video, index) {
   })
   // 关闭弹窗
   await webCamPage.tap('.capture-dialog .monitor-toast-close')
-  await webCamPage.waitForTimeout(500)
+  await webCamPage.waitFor(500)
 }
 
 /** 获取视频总数 */
@@ -435,7 +436,7 @@ function sendWebCamProgress() {
   rootWin.webContents.send('webCamProgress', finishedNum / enterpriseList.length)
 }
 
-function startPageTimer(time = 3 * 60 * 1000) {
+function startPageTimer(time = 1 * 60 * 1000) {
   stopPageTimer()
 
   pageTimer = setTimeout(() => {
