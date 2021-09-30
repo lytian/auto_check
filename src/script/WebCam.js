@@ -258,6 +258,7 @@ async function getCurEnterprise() {
     return
   }
   sendWebCamData()
+  await webCamPage.waitForTimeout(500)
   paginationNum = parseInt(await webCamPage.$eval('.video-pagination .el-pager .number:last-child', (ele) => ele.innerText))
   videoList = []
   paginationIndex = 1
