@@ -14,6 +14,7 @@ let webCamSetting
 let username
 let password
 let enterpriseList = []
+let ranchList = []
 let curEnterprise
 let paginationNum = 0
 let paginationIndex = 0
@@ -90,9 +91,7 @@ ipcMain.on('startCheckWebCam', async (event) => {
       setWebCamSettingItem('username', username)
       setWebCamSettingItem('password', password)
     }
-    // 移除网络请求监听
-    webCamPage.removeListener('request', loginRequest)
-    await webCamPage.waitFor(500)
+    await webCamPage.waitForTimeout(500)
     printLog('跳转【视频监控】页面，' + url + 'video')
     // 挂载方法到window对象
     await webCamPage.exposeFunction('onCustomEvent', (ev) => {
@@ -207,15 +206,25 @@ async function stopCheck() {
 /** 获取当前企业 */
 async function getCurEnterprise() {
   if (!webCamPage || !webCamWin) return
-  const videoTotal = await getVideoTotal()
-  const cattleNum = await webCamPage.$eval('.video-pagination .cattle-num span', (ele) => ele.innerText)
-  const curText = await webCamPage.$eval('.enterprise-list .active', (ele) => ele.innerText)
+  let noCheckVideo = false
+  // 上一个企业名称等于当前的企业名称
+  if (curEnterprise != null && enterpriseList.length > 0) {
+    const index = enterpriseList.findIndex(o => o.name === curEnterprise.name && o.ranchName === curEnterprise.ranchName)
+    if (index > 0) {
+      noCheckVideo = curEnterprise.name === enterpriseList[index - 1].name
+    }
+  }
+  if (!noCheckVideo) {
+    await getRanchList()
+  }
   if (enterpriseList.length === 0) {
     enterpriseList = await webCamPage.$$eval('.enterprise-list li', (elements) => {
       const eles = []
       elements.forEach(function(item, index) {
         eles.push({
+          index: index,
           name: item.innerText, // 企业名称
+          ranchName: '', // 牧场名称
           cattleNum: 0, // 抵质押数
           videoNum: 0, // 接视频数
           exceptionNum: 0, // 异常数
@@ -226,12 +235,22 @@ async function getCurEnterprise() {
       })
       return eles
     })
+    curEnterprise = enterpriseList[0]
     sendWebCamData()
   }
-  curEnterprise = enterpriseList.find(o => o.name === curText)
-  printLog(curEnterprise.name + ': 抵质押数=' + cattleNum + ', 监控视频数=' + videoTotal)
+  const cattleNum = await webCamPage.$eval('.video-pagination .cattle-num span', (ele) => ele.innerText)
+  curEnterprise.cattleNum = cattleNum
 
-  if (videoTotal === 0) {
+  if (!curEnterprise.ranchName) {
+    // 非牧场，当前企业验证修复
+    const curText = await webCamPage.$eval('.enterprise-list .active', (ele) => ele.innerText)
+    curEnterprise = enterpriseList.find(o => o.name === curText)
+  }
+  printLog(`${curEnterprise.name}${curEnterprise.ranchName ? (' - ' + curEnterprise.ranchName) : ''}: 抵质押数=${cattleNum}`)
+
+  const videoCount = await webCamPage.$$eval('.video-item', (els) => els.length)
+  // 没有视频
+  if (videoCount === 0) {
     curEnterprise.finished = true
     sendWebCamProgress()
     // 没有监控，直接下一家企业
@@ -239,12 +258,9 @@ async function getCurEnterprise() {
     return
   }
   sendWebCamData()
-  curEnterprise.videoNum = videoTotal
-  curEnterprise.cattleNum = cattleNum
   paginationNum = parseInt(await webCamPage.$eval('.video-pagination .el-pager .number:last-child', (ele) => ele.innerText))
   videoList = []
   paginationIndex = 1
-  await webCamPage.waitFor(500)
 }
 
 /** 获取截图情况 */
@@ -282,7 +298,7 @@ async function getEnterpriseCapture(video, index) {
       return true
     }
   })
-  await webCamPage.waitFor(200)
+  await webCamPage.waitForTimeout(200)
   const alermEle = await webCamPage.$('.capture-tab .capture-tab-item:nth-child(2)')
   if (alermEle == null) return
   setTimeout(() => {
@@ -290,7 +306,6 @@ async function getEnterpriseCapture(video, index) {
   }, 200)
   // 人形监测截图
   await webCamPage.waitForResponse(res => {
-    // console.log(res.url())
     if (res.url().indexOf('/show/camera/alarm/list') > -1) {
       if (res.status() === 200) {
         res.json().then(data => {
@@ -312,7 +327,45 @@ async function getEnterpriseCapture(video, index) {
   })
   // 关闭弹窗
   await webCamPage.tap('.capture-dialog .monitor-toast-close')
-  await webCamPage.waitFor(500)
+  await webCamPage.waitForTimeout(500)
+}
+
+/**
+ * 获取牧场列表
+ * @returns 为null说明有牧场
+ */
+async function getRanchList() {
+  if (!webCamPage || !webCamWin) return
+
+  let list = []
+  await webCamPage.waitForResponse(async (res) => {
+    if (res.url().indexOf('show/ranch/list') > -1) {
+      const status = res.status()
+      if (status === 200) {
+        const data = await res.json()
+        if (data.code === 200) {
+          list = data.data || []
+        }
+      }
+      return true
+    }
+  })
+  // 有牧场
+  ranchList = list
+  if (ranchList.length > 0) {
+    curEnterprise.ranchName = ranchList[0].ranchName
+    if (ranchList.length > 1) {
+      // 多个牧场
+      const tempOrgList = ranchList.slice(1, ranchList.length).map(r => {
+        const obj = JSON.parse(JSON.stringify(curEnterprise))
+        obj.ranchName = r.ranchName
+        return obj
+      })
+      const index = enterpriseList.findIndex(o => o.ranchName === curEnterprise.ranchName)
+      enterpriseList.splice(index + 1, 0, ...tempOrgList)
+    }
+    await webCamPage.waitForTimeout(200)
+  }
 }
 
 /** 获取视频总数 */
@@ -362,8 +415,9 @@ async function handleVideo() {
   if (!webCamPage || !webCamWin) return
   // 是否全部返回
   if (videoList.every(o => o.statusCode != null)) {
-    printLog(`${curEnterprise.name}: 第${paginationIndex}页的视频已处理完毕`)
+    printLog(`${curEnterprise.name}${curEnterprise.ranchName ? (' - ' + curEnterprise.ranchName) : ''}: 第${paginationIndex}页的视频已处理完毕`)
     curEnterprise.videoList = curEnterprise.videoList.concat(videoList)
+    curEnterprise.videoNum += videoList.length
     sendWebCamData()
     // 在翻页前，先进行获取摄像头截图
     if (webCamSetting.captureEnterpriseName === curEnterprise.name &&
@@ -386,9 +440,9 @@ async function handleVideo() {
       curEnterprise.exceptionNum = exceptionNum
       curEnterprise.finished = true
       if (exceptionNum > 0) {
-        printLog(`${curEnterprise.name}: ${exceptionNum}个异常`, 'red')
+        printLog(`${curEnterprise.name}${curEnterprise.ranchName ? (' - ' + curEnterprise.ranchName) : ''}: ${exceptionNum}个异常`, 'red')
       } else {
-        printLog(`${curEnterprise.name} 没有异常`, '#11d211')
+        printLog(`${curEnterprise.name}${curEnterprise.ranchName ? (' - ' + curEnterprise.ranchName) : ''} 没有异常`, '#11d211')
       }
       printLog('已到最后一页，切换下一个企业。')
       sendWebCamProgress()
@@ -404,7 +458,7 @@ async function nextPage() {
   if (!webCamPage || !webCamWin) return
   printLog(`进入第${paginationIndex + 1}页`)
   await webCamPage.tap('.video-pagination .el-pagination .btn-next')
-  // 等待数据加载完成
+  // 等待视频加载完成
   await getVideoTotal()
   await getCurPageVideo()
 }
@@ -412,12 +466,24 @@ async function nextPage() {
 /** 跳转下一个企业 */
 async function nextEnterprise() {
   if (!webCamPage || !webCamWin) return
-  const entIndex = enterpriseList.findIndex(o => o.name === curEnterprise.name)
-  if (entIndex === (enterpriseList.length - 1)) {
+  const next = enterpriseList.findIndex(o => o.name === curEnterprise.name && o.ranchName === curEnterprise.ranchName) + 1
+  if (next === enterpriseList.length) {
     printLog('已巡查完毕')
     stopCheck()
   } else {
-    await webCamPage.tap(`.enterprise-list li:nth-child(${entIndex + 2})`)
+    const nextOrg = enterpriseList[next]
+    const ranchIndex = ranchList.findIndex(r => r.ranchName === nextOrg.ranchName)
+    if (nextOrg.ranchName && ranchIndex > -1 && ranchIndex < ranchList.length) {
+      // 切换牧场
+      await webCamPage.tap('.video-pagination .el-pager .number:first-child')
+      await getVideoTotal()
+      await webCamPage.tap('.video-pagination .ranch-select-bar')
+      await webCamPage.tap(`.ranch-select-dialog .ranch-select-list li:nth-child(${ranchIndex + 1})`)
+    } else {
+      // 切换企业
+      await webCamPage.tap(`.enterprise-list li:nth-child(${nextOrg.index + 1})`)
+    }
+    curEnterprise = nextOrg
     await getCurEnterprise()
     await getCurPageVideo()
   }
@@ -436,7 +502,7 @@ function sendWebCamProgress() {
   rootWin.webContents.send('webCamProgress', finishedNum / enterpriseList.length)
 }
 
-function startPageTimer(time = 1 * 60 * 1000) {
+function startPageTimer(time = 30 * 1000) {
   stopPageTimer()
 
   pageTimer = setTimeout(() => {

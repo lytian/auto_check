@@ -37,6 +37,7 @@
       </el-form>
       <el-table
       :data="filterList"
+      :span-method="handleSpanMethod"
       height="450px"
       style="width: 100%">
         <el-table-column type="expand">
@@ -49,11 +50,19 @@
           </template>
         </el-table-column>
         <el-table-column
-          label="企业名称"
+          label="企业"
           prop="name"
           width="240">
           <template #default="scope">
-            <span :style="{color: scope.row.exceptionNum > 0 ? 'red' : ''}">{{scope.row.name}}</span>
+            <span :style="{color: !scope.row.ranchName && scope.row.exceptionNum > 0 ? 'red' : ''}">{{scope.row.name}}</span>
+          </template>
+        </el-table-column>
+        <el-table-column
+          label="牧场"
+          prop="name"
+          width="100">
+          <template #default="scope">
+            <span :style="{color: scope.row.ranchName && scope.row.exceptionNum > 0 ? 'red' : ''}">{{scope.row.ranchName}}</span>
           </template>
         </el-table-column>
         <el-table-column
@@ -201,6 +210,21 @@ export default {
       searchForm.onlyFail = false
     }
 
+    const handleSpanMethod = ({ row, column, rowIndex, columnIndex }) => {
+      if (columnIndex === 0) {
+        const count = state.filterList.filter(o => o.name === row.name).length
+        if (count > 1) {
+          const index = state.filterList.findIndex(o => o.name === row.name)
+          if (index === rowIndex) {
+            return {
+              rowspan: count,
+              colspan: 1
+            }
+          }
+        }
+      }
+    }
+
     /** 打开下载弹窗 */
     const openDownloadForm = () => {
       if (state.running) return
@@ -246,6 +270,7 @@ export default {
       startCheck,
       stopCheck,
       viewData,
+      handleSpanMethod,
       openDownloadForm,
       download
     }

@@ -2,7 +2,10 @@
 
 ## Project setup
 ```
-yarn install
+npm install
+
+cnpm install electron@12.2.0
+
 ```
 
 ### Compiles and hot-reloads for development

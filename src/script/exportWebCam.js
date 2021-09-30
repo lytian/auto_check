@@ -63,7 +63,7 @@ function parseVideoList(org) {
       obj.result = '同时播放限制'
       exceptionList = exceptionList.filter(o => o.statusCode !== 9048)
       exceptionList.forEach(item => {
-        obj.result += '\n' + `【${item.name}】${item.statusStr}`
+        obj.result += `\n【${item.name}】${item.statusStr}`
       })
     } else {
       obj.result = exceptionList.map(o => `【${o.name}】${o.statusStr}`).join('\n')
@@ -131,6 +131,7 @@ export default function exportWebCam(webCamList, name, offDevice, filePath) {
     list.push({
       date: date, // 巡查日期
       orgName: item.name, // 企业名称
+      ranchName: item.ranchName, // 企业名称
       webCamStr: videoRes.result, // 摄像头情况
       screenshot: screenshotStr, // 截图情况
       reportTime: '', // 基站巡查时间
@@ -164,6 +165,7 @@ export default function exportWebCam(webCamList, name, offDevice, filePath) {
   const headers = [{
     date: '日期',
     orgName: '企业名称',
+    ranchName: '牧场名称',
     webCamStr: '摄像头是否在线',
     screenshot: '截图是否正常',
     reportDevice: '基站是否在线',
@@ -243,7 +245,8 @@ export default function exportWebCam(webCamList, name, offDevice, filePath) {
   ws['!cols'] = [
     { wch: 10 },
     { wch: 28 },
-    { wch: 32 },
+    { wch: 10 },
+    { wch: 30 },
     { wch: 24 },
     { wch: 32 },
     { wch: 12 },
@@ -259,13 +262,13 @@ export default function exportWebCam(webCamList, name, offDevice, filePath) {
     },
     // 截图
     {
-      s: { r: 1, c: 3 },
-      e: { r: list.length, c: 3 }
+      s: { r: 1, c: 4 },
+      e: { r: list.length, c: 4 }
     },
     // 巡查时间
     {
-      s: { r: 1, c: 5 },
-      e: { r: list.length, c: 5 }
+      s: { r: 1, c: 6 },
+      e: { r: list.length, c: 6 }
     }
   ]
   // 导出
