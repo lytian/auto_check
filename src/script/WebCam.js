@@ -176,7 +176,22 @@ ipcMain.on('openSaveFileDialog', (event, arg) => {
   }).then(res => {
     if (!res.canceled) {
       exportWebCam(arg.webCamList, arg.name, arg.offDevice, res.filePath)
-      event.sender.send('saveFinished', res.filePath)
+      event.sender.send('saveFinished', {
+        code: '0',
+        data: res.filePath
+      })
+    }
+  }).catch(err => {
+    if (err.code === 'EBUSY') {
+      event.sender.send('saveFinished', {
+        code: err.code,
+        msg: '保存失败，文件被占用!'
+      })
+    } else {
+      event.sender.send('saveFinished', {
+        code: '-100',
+        msg: err
+      })
     }
   })
 })

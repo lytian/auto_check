@@ -31,7 +31,7 @@
         <el-form-item label="企业名称">
           <el-input v-model="searchForm.enterpriseName" placeholder="模糊匹配企业名称" clearable style="width: 180px;"/>
         </el-form-item>
-        <el-form-item label=" " label-width="50px">
+        <el-form-item style="margin-left: 30px;">
           <el-checkbox v-model="searchForm.onlyFail">只查异常</el-checkbox>
         </el-form-item>
       </el-form>
@@ -157,9 +157,13 @@ onMounted(() => {
   ipcRenderer.on('closeWebCamWin', () => {
     state.running = false
   })
-  ipcRenderer.on('saveFinished', () => {
-    ElMessage.success('保存成功')
-    state.showDownloadForm = false
+  ipcRenderer.on('saveFinished', (e, res) => {
+    if (res.code === '0') {
+      ElMessage.success('保存成功')
+      state.showDownloadForm = false
+    } else {
+      ElMessage.error(res.msg)
+    }
   })
 })
 
