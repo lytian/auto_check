@@ -254,12 +254,27 @@ export default function exportWebCam(webCamList, name, offDevice, filePath) {
     { wch: 30 }
   ]
   // 合并单元格
+  const orgNameMerges = []
+  for (let i = 0; i < list.length; i++) {
+    const count = list.filter(o => o.orgName === list[i].orgName).length
+    if (count > 1) {
+      orgNameMerges.push({
+        s: { r: i + 1, c: 1 },
+        e: { r: i + count, c: 1 }
+      })
+      // 跳过重复行
+      i = i + count - 1
+    }
+  }
+
   ws['!merges'] = [
     // 日期
     {
       s: { r: 1, c: 0 },
       e: { r: list.length, c: 0 }
     },
+    // 企业名称
+    ...orgNameMerges,
     // 截图
     {
       s: { r: 1, c: 4 },

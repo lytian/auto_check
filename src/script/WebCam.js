@@ -217,6 +217,8 @@ async function getCurEnterprise() {
   if (!noCheckVideo) {
     await getRanchList()
   }
+  await webCamPage.waitForTimeout(200)
+
   if (enterpriseList.length === 0) {
     enterpriseList = await webCamPage.$$eval('.enterprise-list li', (elements) => {
       const eles = []
@@ -365,7 +367,6 @@ async function getRanchList() {
       const index = enterpriseList.findIndex(o => o.ranchName === curEnterprise.ranchName)
       enterpriseList.splice(index + 1, 0, ...tempOrgList)
     }
-    await webCamPage.waitForTimeout(200)
   }
 }
 
@@ -436,7 +437,7 @@ async function handleVideo() {
         curEnterprise.remark = '该企业摄像头不能正常播放，故没有查看截图'
       }
     }
-    if (paginationIndex === paginationNum) {
+    if (paginationIndex >= paginationNum) {
       const exceptionNum = curEnterprise.videoList.filter(o => o.statusCode !== 0).length
       curEnterprise.exceptionNum = exceptionNum
       curEnterprise.finished = true
