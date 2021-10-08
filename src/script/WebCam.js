@@ -22,7 +22,7 @@ let videoList = []
 let pageTimer // 页面巡查超时定时器
 
 // 开启巡查 - 摄像头
-ipcMain.on('startCheckWebCam', async (event) => {
+ipcMain.on('startCheckWebCam', async (event, arg) => {
   try {
     webCamSetting = getWebCamSetting()
     rootWin = BrowserWindow.getFocusedWindow()
@@ -41,17 +41,12 @@ ipcMain.on('startCheckWebCam', async (event) => {
       fullscreen: webCamSetting.fullscreen
     })
     webCamWin.setMenuBarVisibility(false)
-    // 重置默认值
-    enterpriseList = []
-    curEnterprise = null
-    paginationNum = 0
-    paginationIndex = 0
-    videoList = []
+
     const url = webCamSetting.checkUrl
     printLog('打开页面：' + url)
     // 加载指定URL
     await webCamWin.loadURL(url)
-    // 关闭该弹窗
+    // 关闭巡查页面
     webCamWin.on('closed', () => {
       if (rootWin) rootWin.webContents.send('closeWebCamWin')
       printLog('关闭页面，停止巡查')
@@ -148,6 +143,34 @@ ipcMain.on('startCheckWebCam', async (event) => {
       }, false)
     })
     await webCamPage.goto(url + 'video')
+    if (arg && curEnterprise) {
+      // 继续巡查
+      await webCamPage.waitForSelector('.enterprise-list .active')
+      // 跳转企业
+      const orgIndex = enterpriseList.find(o => o.name === curEnterprise.name && o.ranchName === curEnterprise.ranchName).index
+      await webCamPage.tap(`.enterprise-list li:nth-child(${orgIndex + 1})`)
+      if (curEnterprise.ranchName) {
+        // 跳转牧场
+        await webCamPage.waitForResponse(res => res.url().indexOf('show/ranch/list') > -1)
+        await webCamPage.waitForTimeout(300)
+        const ranchIndex = ranchList.findIndex(r => r.ranchName === curEnterprise.ranchName)
+        await webCamPage.tap('.video-pagination .ranch-select-bar')
+        await webCamPage.tap(`.ranch-select-dialog .ranch-select-list li:nth-child(${ranchIndex + 1})`)
+      }
+      // 跳转分页
+      if (paginationIndex > 1) {
+        await webCamPage.waitForResponse(res => res.url().indexOf('show/camera/videoList') > -1)
+        await webCamPage.waitForTimeout(300)
+        await webCamPage.tap(`.video-pagination .el-pager .number:nth-child(${paginationIndex})`)
+      }
+    } else {
+      // 重置默认值
+      enterpriseList = []
+      curEnterprise = null
+      paginationNum = 0
+      paginationIndex = 0
+      videoList = []
+    }
     await getCurEnterprise()
     await getCurPageVideo()
   } catch (err) {

@@ -186,6 +186,18 @@ const filterList = computed(() => {
 
 /** 开始巡查 */
 function startCheck() {
+  if (state.progress > 0 && state.progress < 100) {
+    ElMessageBox.confirm('摄像头还未巡查完毕，是否继续巡查？', '提示', {
+      confirmButtonText: '继续巡查',
+      cancelButtonText: '重新巡查',
+      type: 'warning'
+    }).then(() => {
+      ipcRenderer.send('startCheckWebCam', true)
+    }).catch(() => {
+      ipcRenderer.send('startCheckWebCam')
+    })
+    return
+  }
   ipcRenderer.send('startCheckWebCam')
   state.running = true
   state.progress = 0
