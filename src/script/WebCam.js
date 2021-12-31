@@ -245,7 +245,7 @@ async function stopCheck() {
 async function getCurEnterprise() {
   if (!webCamPage || !webCamWin) return
   let noCheckVideo = false
-  // 上一个企业名称等于当前的企业名称
+  // 切换牧场，上一个企业名称等于当前的企业名称
   if (curEnterprise != null && enterpriseList.length > 0) {
     const index = enterpriseList.findIndex(o => o.name === curEnterprise.name && o.ranchName === curEnterprise.ranchName)
     if (index > 0) {
@@ -255,6 +255,7 @@ async function getCurEnterprise() {
   if (!noCheckVideo) {
     await getRanchList()
   }
+  const videoCount = await getVideoTotal()
   await webCamPage.waitForTimeout(200)
 
   if (enterpriseList.length === 0) {
@@ -286,9 +287,10 @@ async function getCurEnterprise() {
     const curText = await webCamPage.$eval('.enterprise-list .active', (ele) => ele.innerText)
     curEnterprise = enterpriseList.find(o => o.name === curText)
   }
-  printLog(`${curEnterprise.name}${curEnterprise.ranchName ? (' - ' + curEnterprise.ranchName) : ''}: 抵质押数=${cattleNum}`)
+  printLog(`${curEnterprise.name}${curEnterprise.ranchName ? (' - ' + curEnterprise.ranchName) : ''}: 抵质押数=${cattleNum}, 视频数=${videoCount}`)
 
-  const videoCount = await webCamPage.$$eval('.video-item', (els) => els.length)
+  // const videoCount = await webCamPage.$$eval('.video-item', (els) => els.length)
+
   // 没有视频
   if (videoCount === 0) {
     curEnterprise.finished = true
@@ -302,6 +304,7 @@ async function getCurEnterprise() {
   paginationNum = parseInt(await webCamPage.$eval('.video-pagination .el-pager .number:last-child', (ele) => ele.innerText))
   videoList = []
   paginationIndex = 1
+  await getCurPageVideo()
 }
 
 /** 获取截图情况 */
@@ -310,11 +313,10 @@ async function getEnterpriseCapture(video, index) {
   // 查找当前页，是否有成功的摄像头
   printLog(`获取【${video.name}】监控截图`)
   // 点击截图按钮
-  const captureEle = await webCamPage.$(`.video-main .el-row .el-col:nth-child(${index + 1}) .video-title-wrap .video-icon:nth-child(2)`)
+  const captureEle = await webCamPage.$(`.video-main .el-row .el-col:nth-child(${index + 1}) .video-title-wrap .video-capture`)
   if (captureEle == null) return
-  setTimeout(() => {
-    captureEle.click()
-  }, 200)
+  await webCamPage.waitForTimeout(200)
+  await captureEle.click()
   curEnterprise.remark = '所有截图正常'
   // 获取全部截图
   await webCamPage.waitForResponse(res => {
@@ -342,9 +344,8 @@ async function getEnterpriseCapture(video, index) {
   await webCamPage.waitForTimeout(200)
   const alermEle = await webCamPage.$('.capture-tab .capture-tab-item:nth-child(2)')
   if (alermEle == null) return
-  setTimeout(() => {
-    alermEle.click()
-  }, 200)
+  await webCamPage.waitForTimeout(200)
+  await alermEle.click()
   // 人形监测截图
   await webCamPage.waitForResponse(res => {
     if (res.url().indexOf('/show/camera/alarm/list') > -1) {
@@ -525,7 +526,6 @@ async function nextEnterprise() {
     }
     curEnterprise = nextOrg
     await getCurEnterprise()
-    await getCurPageVideo()
   }
 }
 

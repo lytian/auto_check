@@ -120,8 +120,8 @@ export default function exportWebCam(webCamList, name, offDevice, filePath) {
   const list = []
   const date = moment().format('YYYY-MM-DD')
   // 处理摄像头巡查数据
-  const screenshotObj = webCamList.find(o => o.remark)
-  let screenshotStr
+  const screenshotObj = webCamList.find(o => o.remark != null && o.remark)
+  let screenshotStr = ''
   if (screenshotObj) {
     screenshotStr = screenshotObj.remark
   }
@@ -212,7 +212,7 @@ export default function exportWebCam(webCamList, name, offDevice, filePath) {
         })
       } else {
         dataKey = keys[colIndex]
-        if (['orgName', 'webCamStr', 'reportDevice'].includes(dataKey)) {
+        if (['orgName', 'webCamStr', 'reportDevice', 'screenshot'].includes(dataKey)) {
           defaultStyle = {
             font: {
               sz: '11'
